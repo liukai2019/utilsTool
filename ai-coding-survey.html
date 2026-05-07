@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Coding 率统计填报</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; background: #f0f2f5; color: #333; min-height: 100vh; }
+  header { background: #1677ff; color: #fff; padding: 18px 32px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.35rem; font-weight: 700; }
+  header span { font-size: 0.85rem; opacity: 0.85; }
+  .container { max-width: 900px; margin: 24px auto; padding: 0 16px 48px; }
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.10); padding: 24px 28px; margin-bottom: 20px; }
+  .card-title { font-size: 1rem; font-weight: 700; color: #1677ff; border-left: 4px solid #1677ff; padding-left: 10px; margin-bottom: 18px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 20px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 0.82rem; color: #555; }
+  label .opt { color: #aaa; font-size: 0.78rem; margin-left: 4px; }
+  input[type="text"], input[type="date"], input[type="number"], select, textarea {
+    border: 1px solid #d9d9d9; border-radius: 5px; padding: 7px 10px;
+    font-size: 0.9rem; transition: border-color .2s; background: #fff; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #1677ff; outline: none; box-shadow: 0 0 0 2px rgba(22,119,255,.12); }
+  textarea { resize: vertical; min-height: 72px; }
+  .radio-group, .check-group { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+  .radio-group label, .check-group label {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.88rem; color: #333; cursor: pointer; white-space: nowrap;
+  }
+  .range-wrap { display: flex; align-items: center; gap: 10px; }
+  .range-wrap input[type="range"] { flex: 1; }
+  .range-val { min-width: 36px; text-align: right; font-weight: 600; color: #1677ff; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
+  button { border: none; border-radius: 6px; padding: 9px 22px; font-size: 0.9rem; cursor: pointer; transition: background .2s, opacity .2s; }
+  .btn-primary { background: #1677ff; color: #fff; }
+  .btn-primary:hover { background: #0958d9; }
+  .btn-success { background: #52c41a; color: #fff; }
+  .btn-success:hover { background: #389e0d; }
+  .btn-warn { background: #fa8c16; color: #fff; }
+  .btn-warn:hover { background: #d46b08; }
+  .btn-ghost { background: #fff; color: #666; border: 1px solid #d9d9d9; }
+  .btn-ghost:hover { border-color: #1677ff; color: #1677ff; }
+  .preview-box { background: #1e1e1e; color: #d4d4d4; border-radius: 6px; padding: 16px; font-family: "Cascadia Code", "Fira Code", "Consolas", monospace; font-size: 0.82rem; white-space: pre; overflow: auto; max-height: 480px; margin-top: 12px; }
+  .hint { font-size: 0.78rem; color: #999; margin-top: 3px; }
+  .section-desc { font-size: 0.83rem; color: #888; margin-bottom: 10px; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } header { padding: 14px 16px; } .card { padding: 16px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🤖 AI Coding 率统计填报</h1>
+  <span>单文件离线版 · 支持 Markdown / YAML 导出</span>
+</header>
+
+<div class="container" id="app">
+
+  <!-- ① 基础信息 -->
+  <div class="card">
+    <div class="card-title">① 基础信息</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="f_date">统计日期 <span class="required">*</span></label>
+        <input type="date" id="f_date" />
+      </div>
+      <div class="form-group">
+        <label for="f_person">填报人 <span class="required">*</span></label>
+        <input type="text" id="f_person" placeholder="姓名" />
+      </div>
+      <div class="form-group">
+        <label for="f_team">团队 / 组</label>
+        <input type="text" id="f_team" placeholder="所属团队或小组" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 工作项信息 -->
+  <div class="card">
+    <div class="card-title">② 工作项信息</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="f_wi_id">工作项编号</label>
+        <input type="text" id="f_wi_id" placeholder="需求 / Bug / 任务编号" />
+      </div>
+      <div class="form-group">
+        <label for="f_wi_title">工作项标题 <span class="opt">（选填）</span></label>
+        <input type="text" id="f_wi_title" placeholder="可选，方便日后检索" />
+      </div>
+      <div class="form-group">
+        <label for="f_wi_type">工作项类型</label>
+        <select id="f_wi_type"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_project">项目</label>
+        <input type="text" id="f_project" placeholder="项目名称" />
+      </div>
+      <div class="form-group">
+        <label for="f_repo">仓库</label>
+        <input type="text" id="f_repo" placeholder="仓库名称" />
+      </div>
+      <div class="form-group">
+        <label for="f_module">模块 / 子系统</label>
+        <input type="text" id="f_module" placeholder="如 user-service" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 分支信息 -->
+  <div class="card">
+    <div class="card-title">③ 分支信息</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="f_branch_type">分支类型</label>
+        <select id="f_branch_type"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_branch_name">分支名称</label>
+        <input type="text" id="f_branch_name" placeholder="实际分支名，如 feature/xxx" />
+      </div>
+      <div class="form-group">
+        <label for="f_merged">AI 内容是否已合并主干</label>
+        <select id="f_merged"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ AI 工具使用 -->
+  <div class="card">
+    <div class="card-title">④ AI 工具使用</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="f_tool">AI 工具</label>
+        <select id="f_tool"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_account_type">账号权限类型</label>
+        <select id="f_account_type"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_prompt_type">提示词类型</label>
+        <select id="f_prompt_type"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_apply_method">Apply 方式</label>
+        <select id="f_apply_method"></select>
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <label style="font-size:.82rem;color:#555;">AI 介入阶段（可多选）</label>
+      <div class="check-group" id="cg_stage" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ⑤ 变更 & 交付物 -->
+  <div class="card">
+    <div class="card-title">⑤ 变更 & 交付物</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="f_change_type">代码变更类型</label>
+        <select id="f_change_type"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_deliverable">交付物类型</label>
+        <select id="f_deliverable"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_file_count">涉及文件数</label>
+        <input type="number" id="f_file_count" min="0" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label for="f_module_count">涉及模块数</label>
+        <input type="number" id="f_module_count" min="0" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label for="f_complexity">复杂度等级</label>
+        <select id="f_complexity"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_risk">风险等级</label>
+        <select id="f_risk"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_verify">验证方式</label>
+        <select id="f_verify"></select>
+      </div>
+      <div class="form-group">
+        <label for="f_quality">结果质量</label>
+        <select id="f_quality"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ 采纳指标 -->
+  <div class="card">
+    <div class="card-title">⑥ 采纳指标</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="f_adoption">AI 采纳强度</label>
+        <select id="f_adoption"></select>
+      </div>
+      <div class="form-group full">
+        <label>AI 生成内容占比（0–100%）</label>
+        <div class="range-wrap">
+          <input type="range" id="f_gen_pct" min="0" max="100" value="0" oninput="document.getElementById('gen_pct_val').textContent=this.value+'%'" />
+          <span class="range-val" id="gen_pct_val">0%</span>
+        </div>
+      </div>
+      <div class="form-group full">
+        <label>最终采纳占比（0–100%）</label>
+        <div class="range-wrap">
+          <input type="range" id="f_adopt_pct" min="0" max="100" value="0" oninput="document.getElementById('adopt_pct_val').textContent=this.value+'%'" />
+          <span class="range-val" id="adopt_pct_val">0%</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="f_saved_hours">预估节省工时（小时，可为负数）</label>
+        <input type="number" id="f_saved_hours" step="0.5" placeholder="0（负数表示AI增加了工时）" />
+        <span class="hint">负值表示因 AI 输出质量问题导致额外花费工时</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑦ 补充说明 -->
+  <div class="card">
+    <div class="card-title">⑦ 补充说明</div>
+    <div class="form-group full">
+      <textarea id="f_notes" rows="3" placeholder="提示词要点、特殊情况或经验总结……"></textarea>
+    </div>
+  </div>
+
+  <!-- ⑧ 预览 & 导出 -->
+  <div class="card">
+    <div class="card-title">⑧ 预览 & 导出</div>
+    <div class="section-desc">点击下方按钮生成文本预览，再复制或下载文件。</div>
+    <div class="actions">
+      <button class="btn-ghost" onclick="clearForm()">清空表单</button>
+      <button class="btn-warn" onclick="exportYAML()">导出 YAML</button>
+      <button class="btn-success" onclick="exportMarkdown()">导出 Markdown</button>
+      <button class="btn-primary" onclick="previewOutput()">预览</button>
+    </div>
+    <pre class="preview-box" id="preview_box" style="display:none;"></pre>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+//  SURVEY_CONFIG  ← 所有选项列表集中在此处维护，方便内部定制
+// ─────────────────────────────────────────────────────────────────────────────
+const SURVEY_CONFIG = {
+  workItemTypes: [
+    "需求开发",
+    "缺陷修复",
+    "技术优化",
+    "代码重构",
+    "存量维护",
+    "测试补充",
+    "配置修改",
+    "SQL / 数据脚本",
+    "运维脚本",
+    "文档完善",
+    "其他"
+  ],
+
+  branchTypes: [
+    "主干（main/master）",
+    "开发分支（develop）",
+    "特性分支（feature）",
+    "热修复分支（hotfix）",
+    "发布分支（release）",
+    "其他"
+  ],
+
+  mergedOptions: [
+    "已合并主干",
+    "未合并（仅在开发/特性分支）",
+    "不适用"
+  ],
+
+  tools: [
+    "公司内网 Chat 网页版",
+    "VSCode 插件 Ask Only",
+    "VSCode 插件 Ask + Agent + Edit",
+    "其他"
+  ],
+
+  accountTypes: [
+    "Ask Only",
+    "Ask + Agent + Edit",
+    "无特殊权限（Chat 网页版）",
+    "其他"
+  ],
+
+  promptTypes: [
+    "对话型问答",
+    "Spec / 需求描述型",
+    "代码生成型",
+    "代码解释型",
+    "Bug 定位型",
+    "重构建议型",
+    "测试生成型",
+    "SQL 生成型",
+    "正则 / 脚本生成型",
+    "Review 型",
+    "文档生成型",
+    "提交说明 / PR 说明生成型",
+    "架构分析型",
+    "影响面分析型",
+    "调试排错型",
+    "其他"
+  ],
+
+  applyMethods: [
+    "手工复制粘贴",
+    "参考后手写实现",
+    "AI Edit 直接修改",
+    "Agent 自动生成文件",
+    "Agent 自动修改现有文件",
+    "局部接受建议",
+    "整段接受建议",
+    "多轮对话后人工重写",
+    "其他"
+  ],
+
+  stages: [
+    "需求理解",
+    "方案设计",
+    "代码检索 / 定位",
+    "Bug 分析",
+    "编码实现",
+    "单元测试",
+    "联调辅助",
+    "文档补充",
+    "代码 Review",
+    "提交说明整理"
+  ],
+
+  changeTypes: [
+    "新增代码",
+    "修改现有代码",
+    "删除冗余代码",
+    "代码重构",
+    "测试代码",
+    "配置文件",
+    "SQL",
+    "Shell / Python 脚本",
+    "CI/CD 脚本",
+    "文档",
+    "其他"
+  ],
+
+  deliverableTypes: [
+    "源代码",
+    "测试代码",
+    "接口定义",
+    "配置文件",
+    "数据脚本",
+    "运维脚本",
+    "技术文档",
+    "分析报告",
+    "PR 描述 / 提交说明",
+    "其他"
+  ],
+
+  complexityLevels: [
+    "简单",
+    "中等",
+    "复杂",
+    "高复杂"
+  ],
+
+  riskLevels: [
+    "低风险（文档 / 测试 / 脚本）",
+    "中风险（普通业务逻辑）",
+    "高风险（核心交易 / 权限 / 安全 / 资金）",
+    "极高风险（架构底座 / 公共组件 / 核心链路）"
+  ],
+
+  verifyMethods: [
+    "人工代码 Review",
+    "单元测试通过",
+    "集成测试通过",
+    "冒烟通过",
+    "生产验证",
+    "未验证"
+  ],
+
+  qualityLevels: [
+    "一次可用",
+    "需要轻微修正",
+    "需要较大修正",
+    "不可用仅供参考",
+    "引入问题后被回退"
+  ],
+
+  adoptionStrengths: [
+    "L0 — 未使用 AI",
+    "L1 — 仅问答咨询，不直接落地",
+    "L2 — AI 提供思路，开发者手工实现",
+    "L3 — AI 生成部分内容，开发者较大修改后采用",
+    "L4 — AI 生成大部分内容，开发者小幅调整后采用",
+    "L5 — AI 直接生成并基本原样采用"
+  ]
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Render helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function buildSelect(id, options, placeholder) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = `<option value="">— ${placeholder || "请选择"} —</option>` +
+    options.map(o => `<option value="${o}">${o}</option>`).join("");
+}
+
+function buildCheckboxes(containerId, options) {
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = options.map(o =>
+    `<label><input type="checkbox" value="${o}" /> ${o}</label>`
+  ).join("");
+}
+
+function initForm() {
+  buildSelect("f_wi_type",      SURVEY_CONFIG.workItemTypes,     "工作项类型");
+  buildSelect("f_branch_type",  SURVEY_CONFIG.branchTypes,       "分支类型");
+  buildSelect("f_merged",       SURVEY_CONFIG.mergedOptions,     "选择状态");
+  buildSelect("f_tool",         SURVEY_CONFIG.tools,             "AI 工具");
+  buildSelect("f_account_type", SURVEY_CONFIG.accountTypes,      "账号类型");
+  buildSelect("f_prompt_type",  SURVEY_CONFIG.promptTypes,       "提示词类型");
+  buildSelect("f_apply_method", SURVEY_CONFIG.applyMethods,      "Apply 方式");
+  buildSelect("f_change_type",  SURVEY_CONFIG.changeTypes,       "变更类型");
+  buildSelect("f_deliverable",  SURVEY_CONFIG.deliverableTypes,  "交付物类型");
+  buildSelect("f_complexity",   SURVEY_CONFIG.complexityLevels,  "复杂度");
+  buildSelect("f_risk",         SURVEY_CONFIG.riskLevels,        "风险等级");
+  buildSelect("f_verify",       SURVEY_CONFIG.verifyMethods,     "验证方式");
+  buildSelect("f_quality",      SURVEY_CONFIG.qualityLevels,     "结果质量");
+  buildSelect("f_adoption",     SURVEY_CONFIG.adoptionStrengths, "采纳强度");
+  buildCheckboxes("cg_stage", SURVEY_CONFIG.stages);
+
+  // 默认日期为今天
+  document.getElementById("f_date").value = new Date().toISOString().slice(0, 10);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Collect form values
+// ─────────────────────────────────────────────────────────────────────────────
+function g(id) { return (document.getElementById(id)?.value || "").trim(); }
+function checkedValues(containerId) {
+  return [...document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)]
+    .map(cb => cb.value);
+}
+
+function collectData() {
+  return {
+    date:         g("f_date"),
+    person:       g("f_person"),
+    team:         g("f_team"),
+    wi_id:        g("f_wi_id"),
+    wi_title:     g("f_wi_title"),
+    wi_type:      g("f_wi_type"),
+    project:      g("f_project"),
+    repo:         g("f_repo"),
+    module:       g("f_module"),
+    branch_type:  g("f_branch_type"),
+    branch_name:  g("f_branch_name"),
+    merged:       g("f_merged"),
+    tool:         g("f_tool"),
+    account_type: g("f_account_type"),
+    prompt_type:  g("f_prompt_type"),
+    apply_method: g("f_apply_method"),
+    stages:       checkedValues("cg_stage"),
+    change_type:  g("f_change_type"),
+    deliverable:  g("f_deliverable"),
+    file_count:   g("f_file_count"),
+    module_count: g("f_module_count"),
+    complexity:   g("f_complexity"),
+    risk:         g("f_risk"),
+    verify:       g("f_verify"),
+    quality:      g("f_quality"),
+    adoption:     g("f_adoption"),
+    gen_pct:      document.getElementById("f_gen_pct").value + "%",
+    adopt_pct:    document.getElementById("f_adopt_pct").value + "%",
+    saved_hours:  g("f_saved_hours"),
+    notes:        g("f_notes")
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Markdown export
+// ─────────────────────────────────────────────────────────────────────────────
+function toMarkdown(d) {
+  const row = (k, v) => v ? `| ${k} | ${v} |\n` : "";
+  const stageStr = d.stages.length ? d.stages.join("、") : "—";
+  return `# AI Coding 率统计记录
+
+## 基础信息
+| 字段 | 值 |
+|---|---|
+${row("统计日期", d.date)}${row("填报人", d.person)}${row("团队", d.team)}
+## 工作项信息
+| 字段 | 值 |
+|---|---|
+${row("工作项编号", d.wi_id)}${row("工作项标题", d.wi_title)}${row("工作项类型", d.wi_type)}${row("项目", d.project)}${row("仓库", d.repo)}${row("模块", d.module)}
+## 分支信息
+| 字段 | 值 |
+|---|---|
+${row("分支类型", d.branch_type)}${row("分支名称", d.branch_name)}${row("AI 内容合并主干", d.merged)}
+## AI 工具使用
+| 字段 | 值 |
+|---|---|
+${row("AI 工具", d.tool)}${row("账号权限类型", d.account_type)}${row("提示词类型", d.prompt_type)}${row("Apply 方式", d.apply_method)}| AI 介入阶段 | ${stageStr} |
+
+## 变更 & 交付物
+| 字段 | 值 |
+|---|---|
+${row("代码变更类型", d.change_type)}${row("交付物类型", d.deliverable)}${row("涉及文件数", d.file_count)}${row("涉及模块数", d.module_count)}${row("复杂度等级", d.complexity)}${row("风险等级", d.risk)}${row("验证方式", d.verify)}${row("结果质量", d.quality)}
+## 采纳指标
+| 字段 | 值 |
+|---|---|
+${row("AI 采纳强度", d.adoption)}${row("AI 生成内容占比", d.gen_pct)}${row("最终采纳占比", d.adopt_pct)}${row("预估节省工时（小时）", d.saved_hours)}
+## 备注
+${d.notes || "（无）"}
+`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  YAML export
+// ─────────────────────────────────────────────────────────────────────────────
+function yamlStr(s) {
+  if (!s) return '""';
+  if (/[:#\[\]{},|>&*!'"@`\n]/.test(s)) return JSON.stringify(s);
+  return s;
+}
+function toYAML(d) {
+  const stageList = d.stages.length
+    ? "\n" + d.stages.map(s => `  - ${yamlStr(s)}`).join("\n")
+    : " []";
+  return `# AI Coding 率统计记录
+basic_info:
+  date: ${yamlStr(d.date)}
+  person: ${yamlStr(d.person)}
+  team: ${yamlStr(d.team)}
+
+work_item:
+  id: ${yamlStr(d.wi_id)}
+  title: ${yamlStr(d.wi_title)}
+  type: ${yamlStr(d.wi_type)}
+  project: ${yamlStr(d.project)}
+  repo: ${yamlStr(d.repo)}
+  module: ${yamlStr(d.module)}
+
+branch:
+  type: ${yamlStr(d.branch_type)}
+  name: ${yamlStr(d.branch_name)}
+  merged_to_main: ${yamlStr(d.merged)}
+
+ai_tool:
+  name: ${yamlStr(d.tool)}
+  account_type: ${yamlStr(d.account_type)}
+  prompt_type: ${yamlStr(d.prompt_type)}
+  apply_method: ${yamlStr(d.apply_method)}
+  stages:${stageList}
+
+change_and_deliverable:
+  change_type: ${yamlStr(d.change_type)}
+  deliverable_type: ${yamlStr(d.deliverable)}
+  file_count: ${d.file_count || 0}
+  module_count: ${d.module_count || 0}
+  complexity: ${yamlStr(d.complexity)}
+  risk: ${yamlStr(d.risk)}
+  verify_method: ${yamlStr(d.verify)}
+  quality: ${yamlStr(d.quality)}
+
+adoption_metrics:
+  adoption_strength: ${yamlStr(d.adoption)}
+  ai_generated_pct: ${yamlStr(d.gen_pct)}
+  final_adopted_pct: ${yamlStr(d.adopt_pct)}
+  saved_hours: ${d.saved_hours !== "" ? d.saved_hours : 0}
+
+notes: ${yamlStr(d.notes)}
+`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Download helper
+// ─────────────────────────────────────────────────────────────────────────────
+function download(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function dateSuffix() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Actions
+// ─────────────────────────────────────────────────────────────────────────────
+function previewOutput() {
+  const d = collectData();
+  const box = document.getElementById("preview_box");
+  box.textContent = toMarkdown(d);
+  box.style.display = "block";
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function exportMarkdown() {
+  const d = collectData();
+  download(toMarkdown(d), `ai-coding-survey-${dateSuffix()}.md`, "text/markdown;charset=utf-8");
+}
+
+function exportYAML() {
+  const d = collectData();
+  download(toYAML(d), `ai-coding-survey-${dateSuffix()}.yaml`, "text/yaml;charset=utf-8");
+}
+
+function clearForm() {
+  if (!confirm("确认清空所有已填内容？")) return;
+  document.querySelectorAll("input[type='text'], input[type='number']").forEach(el => el.value = "");
+  document.querySelectorAll("select").forEach(el => el.selectedIndex = 0);
+  document.querySelectorAll("textarea").forEach(el => el.value = "");
+  document.querySelectorAll("input[type='checkbox']").forEach(el => el.checked = false);
+  document.getElementById("f_gen_pct").value = 0;
+  document.getElementById("gen_pct_val").textContent = "0%";
+  document.getElementById("f_adopt_pct").value = 0;
+  document.getElementById("adopt_pct_val").textContent = "0%";
+  document.getElementById("f_date").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("preview_box").style.display = "none";
+}
+
+// Init on load
+initForm();
+</script>
+</body>
+</html>
