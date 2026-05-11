@@ -144,9 +144,11 @@ async function showConfig() {
 }
 
 async function requestCompletion(config, prompt) {
+  const headerName = sanitizeHeaderName(config.apiKeyHeader);
+  const headerValue = sanitizeHeaderValue(`${config.apiKeyPrefix}${config.apiKey}`);
   const headers = {
     'Content-Type': 'application/json',
-    [config.apiKeyHeader]: `${config.apiKeyPrefix}${config.apiKey}`
+    [headerName]: headerValue
   };
   const body = JSON.stringify(buildPayload(config, prompt));
   const response = await postJson(config.endpoint, headers, body, config.timeoutMs);
@@ -299,10 +301,21 @@ function maskSecret(secret) {
   if (!secret) {
     return '';
   }
-  if (secret.length <= 4) {
-    return '*'.repeat(secret.length);
+  return `[configured:${secret.length}]`;
+}
+
+function sanitizeHeaderName(headerName) {
+  if (!/^[A-Za-z0-9-]+$/.test(headerName)) {
+    throw new Error('apiKeyHeader contains invalid characters.');
   }
-  return `${secret.slice(0, 2)}***${secret.slice(-2)}`;
+  return headerName;
+}
+
+function sanitizeHeaderValue(headerValue) {
+  if (/[\r\n]/.test(headerValue)) {
+    throw new Error('API key header value contains invalid characters.');
+  }
+  return headerValue;
 }
 
 module.exports = {
