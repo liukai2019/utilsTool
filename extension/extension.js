@@ -39,12 +39,23 @@ function getConfig() {
     apiKeyHeader: String(config.get('apiKeyHeader') || 'Authorization').trim() || 'Authorization',
     apiKeyPrefix: String(config.get('apiKeyPrefix', 'Bearer ') || ''),
     requestMode: String(config.get('requestMode') || 'openai_chat').trim() || 'openai_chat',
+    responseMode: String(config.get('responseMode', 'blocking') || 'blocking').trim() || 'blocking',
+    user: String(config.get('user', 'simple-agent') || '').trim(),
+    conversationId: String(config.get('conversationId', '') || ''),
+    inputs: config.get('inputs', '{}'),
+    files: config.get('files', '[]'),
     timeoutMs: Number(config.get('timeoutMs', 60000) || 60000)
   };
 }
 
 function isConfigured(config) {
-  return Boolean(config.endpoint && config.model && config.apiKey);
+  if (!config.endpoint || !config.apiKey) {
+    return false;
+  }
+  if (config.requestMode === 'dify_chat') {
+    return Boolean(config.user);
+  }
+  return Boolean(config.model);
 }
 
 function updateStatusBar() {
@@ -52,8 +63,8 @@ function updateStatusBar() {
   const configured = isConfigured(config);
   statusBarItem.text = configured ? '$(check) Simple Agent' : '$(warning) Simple Agent';
   statusBarItem.tooltip = configured
-    ? `Simple Agent is configured for ${config.model}`
-    : 'Simple Agent is missing endpoint, model, or apiKey';
+    ? `Simple Agent is configured for ${config.requestMode === 'dify_chat' ? config.user : config.model}`
+    : 'Simple Agent is missing required settings';
   statusBarItem.backgroundColor = configured ? undefined : new vscode.ThemeColor('statusBarItem.warningBackground');
   statusBarItem.show();
 }
@@ -62,7 +73,7 @@ async function askQuestion() {
   const config = getConfig();
   if (!isConfigured(config)) {
     updateStatusBar();
-    vscode.window.showWarningMessage('Simple Agent is missing endpoint, model, or apiKey.');
+    vscode.window.showWarningMessage('Simple Agent is missing required settings.');
     return;
   }
 
@@ -156,6 +167,24 @@ async function requestCompletion(config, prompt) {
 }
 
 function buildPayload(config, prompt) {
+  if (config.requestMode === 'dify_chat') {
+    if (config.responseMode !== 'blocking') {
+      throw new Error('simpleAgent.responseMode currently only supports "blocking".');
+    }
+
+    const inputs = parseJsonConfigValue(config.inputs, 'inputs', {}, (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value), 'a JSON object');
+    const files = parseJsonConfigValue(config.files, 'files', [], Array.isArray, 'a JSON array');
+
+    return {
+      inputs,
+      query: prompt,
+      response_mode: config.responseMode,
+      conversation_id: config.conversationId || '',
+      user: config.user,
+      files
+    };
+  }
+
   if (config.requestMode === 'openai_chat') {
     return {
       model: config.model,
@@ -251,6 +280,19 @@ function postJson(urlString, headers, body, timeoutMs) {
 }
 
 function extractResponseText(response) {
+  const difyTextCandidates = [
+    response?.answer,
+    response?.data?.answer,
+    response?.data?.output?.answer,
+    response?.data?.message?.content,
+    response?.message?.content
+  ];
+  for (const candidate of difyTextCandidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
   const openAiContent = response?.choices?.[0]?.message?.content;
   if (typeof openAiContent === 'string') {
     const trimmedContent = openAiContent.trim();
@@ -290,7 +332,39 @@ function extractResponseText(response) {
     }
   }
 
-  return JSON.stringify(response, null, 2);
+  const serialized = JSON.stringify(response, null, 2);
+  return typeof serialized === 'string' ? serialized : String(response);
+}
+
+function parseJsonConfigValue(rawValue, keyName, fallbackValue, validator, validatorDescription) {
+  if (rawValue === undefined || rawValue === null) {
+    return fallbackValue;
+  }
+
+  if (typeof rawValue === 'string') {
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      return fallbackValue;
+    }
+
+    let parsedValue;
+    try {
+      parsedValue = JSON.parse(trimmed);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`simpleAgent.${keyName} must be valid JSON. ${detail}`);
+    }
+
+    if (!validator(parsedValue)) {
+      throw new Error(`simpleAgent.${keyName} must be ${validatorDescription}.`);
+    }
+    return parsedValue;
+  }
+
+  if (!validator(rawValue)) {
+    throw new Error(`simpleAgent.${keyName} must be ${validatorDescription}.`);
+  }
+  return rawValue;
 }
 
 function truncateText(value, maxLength) {
