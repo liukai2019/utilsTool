@@ -252,8 +252,11 @@ function postJson(urlString, headers, body, timeoutMs) {
 
 function extractResponseText(response) {
   const openAiContent = response?.choices?.[0]?.message?.content;
-  if (typeof openAiContent === 'string' && openAiContent.trim()) {
-    return openAiContent.trim();
+  if (typeof openAiContent === 'string') {
+    const trimmedContent = openAiContent.trim();
+    if (trimmedContent) {
+      return trimmedContent;
+    }
   }
 
   if (Array.isArray(openAiContent)) {
@@ -313,7 +316,7 @@ function sanitizeHeaderName(headerName) {
 
 function sanitizeHeaderValue(headerValue) {
   if (/[\r\n]/.test(headerValue)) {
-    throw new Error('API key header value cannot contain newline characters (\\r or \\n).');
+    throw new Error('API key header value cannot contain newline characters.');
   }
   return headerValue;
 }
