@@ -234,7 +234,7 @@ function postJson(urlString, headers, body, timeoutMs) {
 
     const timeoutHandle = setTimeout(() => {
       const error = new Error(`Request timed out after ${timeoutMs} ms.`);
-      request.destroy(error);
+      request.destroy();
       rejectOnce(error);
     }, timeoutMs);
 
