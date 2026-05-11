@@ -44,6 +44,15 @@ if (Test-Path $tempZip) {
     Remove-Item $tempZip -Force
 }
 
-Compress-Archive -Path (Join-Path $repoRoot "extension") -DestinationPath $tempZip -Force
+[System.Reflection.Assembly]::LoadWithPartialName("System.IO.Compression.FileSystem") | Out-Null
+$zipArchive = [System.IO.Compression.ZipFile]::Open($tempZip, [System.IO.Compression.ZipArchiveMode]::Create)
+try {
+    Get-ChildItem -Path $extensionDir -Recurse -File | ForEach-Object {
+        $relativePath = $_.FullName.Substring($repoRoot.Length + 1).Replace("\", "/")
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipArchive, $_.FullName, $relativePath) | Out-Null
+    }
+} finally {
+    $zipArchive.Dispose()
+}
 Move-Item -Path $tempZip -Destination $resolvedOutput -Force
 Write-Host "Created fallback package: $resolvedOutput"

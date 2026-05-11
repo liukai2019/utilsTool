@@ -36,9 +36,9 @@ function getConfig() {
     endpoint: String(config.get('endpoint', '') || '').trim(),
     model: String(config.get('model', '') || '').trim(),
     apiKey: String(config.get('apiKey', '') || ''),
-    apiKeyHeader: String(config.get('apiKeyHeader', 'Authorization') || 'Authorization').trim() || 'Authorization',
+    apiKeyHeader: String(config.get('apiKeyHeader') || 'Authorization').trim() || 'Authorization',
     apiKeyPrefix: String(config.get('apiKeyPrefix', 'Bearer ') || ''),
-    requestMode: String(config.get('requestMode', 'openai_chat') || 'openai_chat').trim() || 'openai_chat',
+    requestMode: String(config.get('requestMode') || 'openai_chat').trim() || 'openai_chat',
     timeoutMs: Number(config.get('timeoutMs', 60000) || 60000)
   };
 }
