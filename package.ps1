@@ -48,7 +48,15 @@ Add-Type -AssemblyName "System.IO.Compression.FileSystem"
 $zipArchive = [System.IO.Compression.ZipFile]::Open($tempZip, [System.IO.Compression.ZipArchiveMode]::Create)
 try {
     Get-ChildItem -Path $extensionDir -Recurse -File | ForEach-Object {
-        $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $_.FullName).Replace("\", "/")
+        $fullPath = $_.FullName
+        if ([System.IO.Path].GetMethod("GetRelativePath", [Type[]]@([string], [string]))) {
+            $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $fullPath)
+        } else {
+            $baseUri = [System.Uri]::new(($repoRoot.TrimEnd("\", "/") + [System.IO.Path]::DirectorySeparatorChar))
+            $fileUri = [System.Uri]::new($fullPath)
+            $relativePath = [System.Uri]::UnescapeDataString($baseUri.MakeRelativeUri($fileUri).ToString())
+        }
+        $relativePath = $relativePath.Replace("\", "/")
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipArchive, $_.FullName, $relativePath) | Out-Null
     }
 } finally {

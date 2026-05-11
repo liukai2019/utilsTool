@@ -306,14 +306,14 @@ function maskSecret(secret) {
 
 function sanitizeHeaderName(headerName) {
   if (!/^[A-Za-z0-9-]+$/.test(headerName)) {
-    throw new Error('apiKeyHeader contains invalid characters.');
+    throw new Error('apiKeyHeader must contain only letters, numbers, and hyphens.');
   }
   return headerName;
 }
 
 function sanitizeHeaderValue(headerValue) {
   if (/[\r\n]/.test(headerValue)) {
-    throw new Error('API key header value contains invalid characters.');
+    throw new Error('API key header value cannot contain newline characters (\\r or \\n).');
   }
   return headerValue;
 }
