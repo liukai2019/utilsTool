@@ -175,11 +175,26 @@ function buildPayload(config, prompt) {
 
 function postJson(urlString, headers, body, timeoutMs) {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const resolveOnce = (value) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      resolve(value);
+    };
+    const rejectOnce = (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      reject(error);
+    };
     let url;
     try {
       url = new URL(urlString);
     } catch (error) {
-      reject(new Error('Invalid endpoint URL.'));
+      rejectOnce(new Error('Invalid endpoint URL.'));
       return;
     }
 
@@ -194,8 +209,7 @@ function postJson(urlString, headers, body, timeoutMs) {
         headers: {
           ...headers,
           'Content-Length': Buffer.byteLength(body)
-        },
-        timeout: timeoutMs
+        }
       },
       (response) => {
         let raw = '';
@@ -205,23 +219,30 @@ function postJson(urlString, headers, body, timeoutMs) {
         });
         response.on('end', () => {
           if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
-            reject(new Error(`HTTP ${response.statusCode || 0}: ${truncateText(raw, 500)}`));
+            rejectOnce(new Error(`HTTP ${response.statusCode || 0}: ${truncateText(raw, 500)}`));
             return;
           }
 
           try {
-            resolve(raw ? JSON.parse(raw) : {});
+            resolveOnce(raw ? JSON.parse(raw) : {});
           } catch (error) {
-            reject(new Error(`Response was not valid JSON: ${truncateText(raw, 500)}`));
+            rejectOnce(new Error(`Response was not valid JSON: ${truncateText(raw, 500)}`));
           }
         });
       }
     );
 
-    request.on('timeout', () => {
-      request.destroy(new Error(`Request timed out after ${timeoutMs} ms.`));
+    const timeoutHandle = setTimeout(() => {
+      const error = new Error(`Request timed out after ${timeoutMs} ms.`);
+      request.destroy(error);
+      rejectOnce(error);
+    }, timeoutMs);
+
+    request.on('close', () => clearTimeout(timeoutHandle));
+    request.on('error', (error) => {
+      clearTimeout(timeoutHandle);
+      rejectOnce(error);
     });
-    request.on('error', (error) => reject(error));
     request.write(body);
     request.end();
   });

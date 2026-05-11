@@ -44,7 +44,7 @@ if (Test-Path $tempZip) {
     Remove-Item $tempZip -Force
 }
 
-[System.Reflection.Assembly]::LoadWithPartialName("System.IO.Compression.FileSystem") | Out-Null
+Add-Type -AssemblyName "System.IO.Compression.FileSystem"
 $zipArchive = [System.IO.Compression.ZipFile]::Open($tempZip, [System.IO.Compression.ZipArchiveMode]::Create)
 try {
     Get-ChildItem -Path $extensionDir -Recurse -File | ForEach-Object {
