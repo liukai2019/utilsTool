@@ -1,0 +1,88 @@
+{
+  "name": "simple-agent",
+  "displayName": "Simple Agent",
+  "description": "Minimal internal AI endpoint client for VS Code.",
+  "version": "0.0.1",
+  "publisher": "liukai2019",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:simpleAgent.ask",
+    "onCommand:simpleAgent.setApiKey",
+    "onCommand:simpleAgent.clearApiKey",
+    "onCommand:simpleAgent.showConfig"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "simpleAgent.ask",
+        "title": "Simple Agent: Ask"
+      },
+      {
+        "command": "simpleAgent.setApiKey",
+        "title": "Simple Agent: Set API Key"
+      },
+      {
+        "command": "simpleAgent.clearApiKey",
+        "title": "Simple Agent: Clear API Key"
+      },
+      {
+        "command": "simpleAgent.showConfig",
+        "title": "Simple Agent: Show Config"
+      }
+    ],
+    "configuration": {
+      "title": "Simple Agent",
+      "properties": {
+        "simpleAgent.endpoint": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Internal AI endpoint URL."
+        },
+        "simpleAgent.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model name sent to the endpoint."
+        },
+        "simpleAgent.apiKey": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "API key stored in settings.json."
+        },
+        "simpleAgent.apiKeyHeader": {
+          "type": "string",
+          "default": "Authorization",
+          "markdownDescription": "Header name used for the API key."
+        },
+        "simpleAgent.apiKeyPrefix": {
+          "type": "string",
+          "default": "Bearer ",
+          "markdownDescription": "Prefix prepended to the API key when sending the header."
+        },
+        "simpleAgent.requestMode": {
+          "type": "string",
+          "default": "openai_chat",
+          "enum": [
+            "openai_chat",
+            "prompt"
+          ],
+          "markdownDescription": "Request payload mode."
+        },
+        "simpleAgent.timeoutMs": {
+          "type": "number",
+          "default": 60000,
+          "minimum": 1000,
+          "markdownDescription": "Request timeout in milliseconds."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "node --check extension.js"
+  }
+}
