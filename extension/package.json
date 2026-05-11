@@ -69,9 +69,39 @@
           "default": "openai_chat",
           "enum": [
             "openai_chat",
-            "prompt"
+            "prompt",
+            "dify_chat"
           ],
           "markdownDescription": "Request payload mode."
+        },
+        "simpleAgent.responseMode": {
+          "type": "string",
+          "default": "blocking",
+          "enum": [
+            "blocking",
+            "streaming"
+          ],
+          "markdownDescription": "Response mode for `dify_chat`. Use `blocking` because this extension does not support streaming/SSE."
+        },
+        "simpleAgent.user": {
+          "type": "string",
+          "default": "simple-agent",
+          "markdownDescription": "User identifier sent in `dify_chat` requests."
+        },
+        "simpleAgent.conversationId": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Conversation ID sent in `dify_chat` requests."
+        },
+        "simpleAgent.inputs": {
+          "type": "string",
+          "default": "{}",
+          "markdownDescription": "JSON object string sent as `inputs` in `dify_chat` requests."
+        },
+        "simpleAgent.files": {
+          "type": "string",
+          "default": "[]",
+          "markdownDescription": "JSON array string sent as `files` in `dify_chat` requests."
         },
         "simpleAgent.timeoutMs": {
           "type": "number",
